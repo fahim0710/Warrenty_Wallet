@@ -14,14 +14,12 @@ app.use(
 );
 
 app.use(helmet());
-
 app.use(compression());
 
 app.use(express.json());
-
 app.use(cookieParser());
 
-app.get("/", (_, res) => {
+app.get("/", (_req, res) => {
     res.status(200).json({
         success: true,
         message: "Warranty Wallet API Running",

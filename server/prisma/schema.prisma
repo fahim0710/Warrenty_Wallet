@@ -1,6 +1,5 @@
 generator client {
-  provider = "prisma-client"
-  output   = "../src/generated/prisma"
+  provider = "prisma-client-js"
 }
 
 datasource db {
@@ -8,94 +7,27 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model Claim {
-  id            String      @id
-  userId        String
-  productId     String
-  claimNumber   String?
-  serviceCenter String?
-  status        ClaimStatus @default(PENDING)
-  description   String?
-  createdAt     DateTime    @default(now())
-  Product       Product     @relation(fields: [productId], references: [id])
-  User          User        @relation(fields: [userId], references: [id])
+enum Role {
+  USER
+  ADMIN
 }
 
-model Invoice {
-  id        String   @id
-  productId String   @unique
-  files     Json
-  ocrData   Json?
-  createdAt DateTime @default(now())
-  Product   Product  @relation(fields: [productId], references: [id])
+enum Plan {
+  FREE
+  PREMIUM
 }
 
-model Notification {
-  id        String           @id
-  userId    String
-  title     String
-  message   String
-  type      NotificationType
-  isRead    Boolean          @default(false)
-  createdAt DateTime         @default(now())
-  User      User             @relation(fields: [userId], references: [id])
+enum WarrantyStatus {
+  ACTIVE
+  EXPIRING_SOON
+  EXPIRED
 }
 
-model Product {
-  id               String         @id
-  userId           String
-  productName      String
-  brand            String
-  category         String
-  modelNumber      String?
-  serialNumber     String?
-  purchasePrice    Float?
-  purchaseDate     DateTime
-  warrantyDuration Int
-  expiryDate       DateTime
-  status           WarrantyStatus
-  notes            String?
-  createdAt        DateTime       @default(now())
-  updatedAt        DateTime
-  Claim            Claim[]
-  Invoice          Invoice?
-  User             User           @relation(fields: [userId], references: [id])
-  Reminder         Reminder[]
-}
-
-model Reminder {
-  id         String   @id
-  productId  String
-  daysBefore Int
-  sent       Boolean  @default(false)
-  createdAt  DateTime @default(now())
-  Product    Product  @relation(fields: [productId], references: [id])
-}
-
-model Subscription {
-  id                   String    @id
-  userId               String    @unique
-  stripeCustomerId     String?
-  stripeSubscriptionId String?
-  status               String?
-  currentPeriodEnd     DateTime?
-  User                 User      @relation(fields: [userId], references: [id])
-}
-
-model User {
-  id           String         @id
-  firebaseUid  String         @unique
-  email        String         @unique
-  name         String
-  photoURL     String?
-  role         Role           @default(USER)
-  plan         Plan           @default(FREE)
-  createdAt    DateTime       @default(now())
-  updatedAt    DateTime
-  Claim        Claim[]
-  Notification Notification[]
-  Product      Product[]
-  Subscription Subscription?
+enum NotificationType {
+  WARRANTY_EXPIRING
+  WARRANTY_EXPIRED
+  SYSTEM
+  SUBSCRIPTION
 }
 
 enum ClaimStatus {
@@ -107,25 +39,130 @@ enum ClaimStatus {
   COMPLETED
 }
 
-enum NotificationType {
-  WARRANTY_EXPIRING
-  WARRANTY_EXPIRED
-  SYSTEM
-  SUBSCRIPTION
+model User {
+  id          String   @id @default(cuid())
+  firebaseUid String   @unique
+  email       String   @unique
+  name        String
+  photoURL    String?
+
+  role        Role     @default(USER)
+  plan        Plan     @default(FREE)
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  products       Product[]
+  notifications  Notification[]
+  claims         Claim[]
+  subscription   Subscription?
 }
 
-enum Plan {
-  FREE
-  PREMIUM
+model Product {
+  id               String @id @default(cuid())
+
+  userId           String
+  user             User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  productName      String
+  brand            String
+  category         String
+
+  modelNumber      String?
+  serialNumber     String?
+
+  purchasePrice    Float?
+
+  purchaseDate     DateTime
+
+  warrantyDuration Int
+
+  expiryDate       DateTime
+
+  status           WarrantyStatus @default(ACTIVE)
+
+  notes            String?
+
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  invoice          Invoice?
+  reminders        Reminder[]
+  claims           Claim[]
 }
 
-enum Role {
-  USER
-  ADMIN
+model Invoice {
+  id          String @id @default(cuid())
+
+  productId   String @unique
+  product     Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  files       Json
+  ocrData     Json?
+
+  createdAt   DateTime @default(now())
 }
 
-enum WarrantyStatus {
-  ACTIVE
-  EXPIRING_SOON
-  EXPIRED
+model Reminder {
+  id          String @id @default(cuid())
+
+  productId   String
+  product     Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  daysBefore  Int
+
+  sent        Boolean @default(false)
+
+  createdAt   DateTime @default(now())
+}
+
+model Notification {
+  id          String @id @default(cuid())
+
+  userId      String
+  user        User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  title       String
+  message     String
+
+  type        NotificationType
+
+  isRead      Boolean @default(false)
+
+  createdAt   DateTime @default(now())
+}
+
+model Claim {
+  id              String @id @default(cuid())
+
+  userId          String
+  productId       String
+
+  user            User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  product         Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  claimNumber     String?
+
+  serviceCenter   String?
+
+  status          ClaimStatus @default(PENDING)
+
+  description     String?
+
+  createdAt       DateTime @default(now())
+}
+
+model Subscription {
+  id                      String @id @default(cuid())
+
+  userId                  String @unique
+  user                    User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  stripeCustomerId        String?
+  stripeSubscriptionId    String?
+
+  status                  String?
+
+  currentPeriodEnd        DateTime?
 }
