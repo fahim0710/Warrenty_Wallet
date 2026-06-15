@@ -1,9 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client"
   output   = "../src/generated/prisma"
@@ -12,4 +6,126 @@ generator client {
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
+}
+
+model Claim {
+  id            String      @id
+  userId        String
+  productId     String
+  claimNumber   String?
+  serviceCenter String?
+  status        ClaimStatus @default(PENDING)
+  description   String?
+  createdAt     DateTime    @default(now())
+  Product       Product     @relation(fields: [productId], references: [id])
+  User          User        @relation(fields: [userId], references: [id])
+}
+
+model Invoice {
+  id        String   @id
+  productId String   @unique
+  files     Json
+  ocrData   Json?
+  createdAt DateTime @default(now())
+  Product   Product  @relation(fields: [productId], references: [id])
+}
+
+model Notification {
+  id        String           @id
+  userId    String
+  title     String
+  message   String
+  type      NotificationType
+  isRead    Boolean          @default(false)
+  createdAt DateTime         @default(now())
+  User      User             @relation(fields: [userId], references: [id])
+}
+
+model Product {
+  id               String         @id
+  userId           String
+  productName      String
+  brand            String
+  category         String
+  modelNumber      String?
+  serialNumber     String?
+  purchasePrice    Float?
+  purchaseDate     DateTime
+  warrantyDuration Int
+  expiryDate       DateTime
+  status           WarrantyStatus
+  notes            String?
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime
+  Claim            Claim[]
+  Invoice          Invoice?
+  User             User           @relation(fields: [userId], references: [id])
+  Reminder         Reminder[]
+}
+
+model Reminder {
+  id         String   @id
+  productId  String
+  daysBefore Int
+  sent       Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  Product    Product  @relation(fields: [productId], references: [id])
+}
+
+model Subscription {
+  id                   String    @id
+  userId               String    @unique
+  stripeCustomerId     String?
+  stripeSubscriptionId String?
+  status               String?
+  currentPeriodEnd     DateTime?
+  User                 User      @relation(fields: [userId], references: [id])
+}
+
+model User {
+  id           String         @id
+  firebaseUid  String         @unique
+  email        String         @unique
+  name         String
+  photoURL     String?
+  role         Role           @default(USER)
+  plan         Plan           @default(FREE)
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime
+  Claim        Claim[]
+  Notification Notification[]
+  Product      Product[]
+  Subscription Subscription?
+}
+
+enum ClaimStatus {
+  PENDING
+  SUBMITTED
+  UNDER_REVIEW
+  APPROVED
+  REJECTED
+  COMPLETED
+}
+
+enum NotificationType {
+  WARRANTY_EXPIRING
+  WARRANTY_EXPIRED
+  SYSTEM
+  SUBSCRIPTION
+}
+
+enum Plan {
+  FREE
+  PREMIUM
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum WarrantyStatus {
+  ACTIVE
+  EXPIRING_SOON
+  EXPIRED
 }
