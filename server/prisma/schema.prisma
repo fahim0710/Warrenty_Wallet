@@ -1,0 +1,212 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum Plan {
+  FREE
+  PREMIUM
+}
+
+enum WarrantyStatus {
+  ACTIVE
+  EXPIRING_SOON
+  EXPIRED
+}
+
+enum NotificationType {
+  WARRANTY_EXPIRING
+  WARRANTY_EXPIRED
+  SYSTEM
+  SUBSCRIPTION
+}
+
+enum ClaimStatus {
+  PENDING
+  SUBMITTED
+  UNDER_REVIEW
+  APPROVED
+  REJECTED
+  COMPLETED
+}
+
+model User {
+  id String @id @default(cuid())
+
+  firebaseUid String @unique
+
+  name String
+
+  email String @unique
+
+  photoUrl String?
+
+  role Role @default(USER)
+
+  plan Plan @default(FREE)
+
+  isActive Boolean @default(true)
+
+  stripeCustomerId String?
+
+  stripeSubscriptionId String?
+
+  createdAt DateTime @default(now())
+
+  updatedAt DateTime @updatedAt
+
+  products Product[]
+
+  notifications Notification[]
+
+  claims Claim[]
+
+  subscription Subscription?
+}
+
+model Product {
+  id String @id @default(cuid())
+
+  userId String
+
+  user User @relation(fields: [userId], references: [id])
+
+  productName String
+
+  brand String
+
+  category String
+
+  modelNumber String?
+
+  serialNumber String?
+
+  purchasePrice Float?
+
+  purchaseDate DateTime
+
+  warrantyDuration Int
+
+  expiryDate DateTime
+
+  status WarrantyStatus
+
+  warrantyType String
+
+  notes String?
+
+  shopName String?
+
+  shopPhone String?
+
+  shopAddress String?
+
+  createdAt DateTime @default(now())
+
+  updatedAt DateTime @updatedAt
+
+  invoice Invoice?
+
+  reminders Reminder[]
+
+  claims Claim[]
+}
+
+model Invoice {
+  id String @id @default(cuid())
+
+  productId String @unique
+
+  product Product @relation(fields: [productId], references: [id])
+
+  files Json
+
+  ocrData Json?
+
+  createdAt DateTime @default(now())
+}
+
+model Reminder {
+  id String @id @default(cuid())
+
+  productId String
+
+  product Product @relation(fields: [productId], references: [id])
+
+  daysBefore Int
+
+  sent Boolean @default(false)
+
+  createdAt DateTime @default(now())
+}
+
+model Notification {
+  id String @id @default(cuid())
+
+  userId String
+
+  user User @relation(fields: [userId], references: [id])
+
+  title String
+
+  message String
+
+  type NotificationType
+
+  isRead Boolean @default(false)
+
+  createdAt DateTime @default(now())
+}
+
+model Claim {
+  id String @id @default(cuid())
+
+  userId String
+
+  productId String
+
+  user User @relation(fields: [userId], references: [id])
+
+  product Product @relation(fields: [productId], references: [id])
+
+  claimNumber String?
+
+  claimDate DateTime
+
+  serviceCenter String?
+
+  description String?
+
+  status ClaimStatus @default(PENDING)
+
+  resolutionDate DateTime?
+
+  createdAt DateTime @default(now())
+}
+
+model Subscription {
+  id String @id @default(cuid())
+
+  userId String @unique
+
+  user User @relation(fields: [userId], references: [id])
+
+  stripeCustomerId String
+
+  stripeSubscriptionId String
+
+  status String
+
+  currentPeriodEnd DateTime
+
+  createdAt DateTime @default(now())
+}
